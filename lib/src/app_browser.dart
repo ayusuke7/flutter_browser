@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_browser/src/components/cursor_painter.dart';
+import 'package:flutter_browser/src/components/dev_tools.dart';
 import 'package:flutter_browser/src/components/header_browser.dart';
-import 'package:flutter_browser/src/types/key_map.dart';
+import 'package:flutter_browser/src/components/virtual_mouse.dart';
 import 'package:flutter_browser/src/utils/helper.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -21,20 +18,14 @@ class AppBrowser extends StatefulWidget {
 
 class _AppBrowserState extends State<AppBrowser> {
   late final WebViewController _controller;
+
   final _editingController = TextEditingController();
-
-  final String _homePage = 'https://google.com';
-  final KeyMap _keyMap = KeyMap();
-  final double _velocity = 5.0;
-
-  double _dx = 0;
-  double _dy = 0;
-  double _maxWidth = 0;
-  double _maxHeigth = 0;
-
-  bool _showCursor = false;
-
+  final String _homePage = 'https://flutter.dev';
   final List<String> _console = [];
+
+  Offset _virtualOffset = Offset.zero;
+  Size _virtualSize = Size.zero;
+  bool _showConsole = false;
 
   WebViewController _setup() {
     late final PlatformWebViewControllerCreationParams params;
@@ -59,8 +50,10 @@ class _AppBrowserState extends State<AppBrowser> {
     _controller = _setup()
       ..setUserAgent(userAgent)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setOnScrollPositionChange((position) {})
       ..setNavigationDelegate(
         NavigationDelegate(
+          onHttpAuthRequest: (request) {},
           onNavigationRequest: (request) {
             if (request.url.contains("youtube.com")) {
               Helper.openLink(request.url);
@@ -76,62 +69,42 @@ class _AppBrowserState extends State<AppBrowser> {
         ),
       )
       ..setOnConsoleMessage((message) {
-        final prefix = "[${message.level.name.toUpperCase()}}]";
+        final level = message.level.name.toUpperCase();
         setState(() {
-          _console.add("$prefix: ${message.message}");
+          _console.add("[$level]: ${message.message}\n");
         });
       })
       ..loadRequest(Uri.parse(_homePage));
   }
 
-  void _setupCursor() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final size = MediaQuery.sizeOf(context);
-      setState(() {
-        _dx = size.width / 2;
-        _dy = size.height / 2;
-        _showCursor = true;
-      });
-    });
-  }
-
-  void _cursorClick() {
+  void _cursorClick(Offset offset) {
     _controller.runJavaScriptReturningResult('''
-      var element = document.elementFromPoint($_dx, $_dy);
+      var element = document.elementFromPoint(${offset.dx}, ${offset.dy});
       if (element) element.click();
     ''');
   }
 
-  void _cursorMove() {
-    Timer.periodic(const Duration(milliseconds: 50), (t) {
-      if (_keyMap.keyLeft && _dx >= 0) {
-        _dx -= _velocity;
-      } else if (_keyMap.keyRight && _dx < _maxWidth - 15) {
-        _dx += _velocity;
-      } else if (_keyMap.keyUp && _dy >= 0) {
-        _dy -= _velocity;
-      } else if (_keyMap.keyDown && _dy < _maxHeigth) {
-        _dy += _velocity;
-      } else {
-        t.cancel();
+  void _scrollOffset(KeyPressed key) async {
+    if (!key.keyUp && !key.keyDown) return;
+
+    final scroll = await _controller.getScrollPosition();
+
+    // Check if possible scroll and top offset
+    if (key.keyUp) {
+      if (scroll.dy >= 0 && _virtualOffset.dy <= 0) {
+        _controller.scrollTo(
+          scroll.dx.toInt(),
+          scroll.dy.toInt() - 40,
+        );
+      } else if (scroll.dy <= 0 && _virtualOffset.dy <= 0 && mounted) {
+        FocusScope.of(context).previousFocus();
       }
 
-      setState(() {});
-    });
-  }
-
-  void _scrollOffset() async {
-    var scroll = await _controller.getScrollPosition();
-
-    if (_keyMap.keyUp && _dy <= 0 && scroll.dy > 0) {
+      // Check if possible scroll and bottom offset
+    } else if (key.keyDown && _virtualOffset.dy >= _virtualSize.height) {
       _controller.scrollTo(
         scroll.dx.toInt(),
-        scroll.dy.toInt() - 20,
-      );
-    } else if (_keyMap.keyDown && _dy >= _maxHeigth) {
-      _controller.scrollTo(
-        scroll.dx.toInt(),
-        scroll.dy.toInt() + 20,
+        scroll.dy.toInt() + 40,
       );
     }
   }
@@ -139,87 +112,64 @@ class _AppBrowserState extends State<AppBrowser> {
   @override
   void initState() {
     super.initState();
-    _setupCursor();
     _init();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: HeaderBrowser(
-        homePage: _homePage,
-        webViewController: _controller,
-        editingController: _editingController,
-      ),
-      body: LayoutBuilder(
-        builder: (context, constrants) {
-          _maxWidth = constrants.maxWidth;
-          _maxHeigth = constrants.maxHeight;
-          return FocusScope(
-            autofocus: true,
-            onKeyEvent: _keyListener,
-            child: Stack(
-              children: [
-                WebViewWidget(
-                  controller: _controller,
-                ),
-                Positioned(
-                  top: _dy,
-                  left: _dx,
-                  child: CustomPaint(
-                    size: const Size(15, 25),
-                    painter: CursorPainter(),
-                  ),
-                ),
-              ],
+    return FocusTraversalGroup(
+      child: Scaffold(
+        appBar: HeaderBrowser(
+          webViewController: _controller,
+          editingController: _editingController,
+          actions: [
+            IconButton(
+              color: Colors.white,
+              icon: const Icon(Icons.home),
+              onPressed: () {
+                _controller.loadRequest(
+                  Uri.parse(_homePage),
+                );
+              },
             ),
-          );
-        },
+            IconButton(
+              color: Colors.white,
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                setState(() {
+                  _showConsole = !_showConsole;
+                });
+              },
+            ),
+          ],
+        ),
+        body: Stack(
+          alignment: AlignmentDirectional.bottomCenter,
+          children: [
+            VirtualMouse(
+              onClick: _cursorClick,
+              onKeyPressed: _scrollOffset,
+              onMoveEnd: (offset, size) {
+                _virtualOffset = offset;
+                _virtualSize = size;
+              },
+              child: WebViewWidget(
+                controller: _controller,
+              ),
+            ),
+            if (_showConsole)
+              BrowserDevTools(
+                console: _console,
+                onSubmit: _controller.runJavaScript,
+                onClear: () {
+                  setState(() {
+                    _console.clear();
+                  });
+                },
+              ),
+          ],
+        ),
       ),
     );
-  }
-
-  Widget _buildConsole() {
-    return Container(
-      padding: const EdgeInsets.all(10.0),
-      height: _maxHeigth * 0.4,
-      width: _maxWidth,
-      color: Colors.grey.shade900,
-      child: ListView(
-        children: _console.map((c) {
-          var style = TextStyle(
-            color: c.contains("ERROR") ? Colors.red.shade300 : Colors.white,
-          );
-          return Text(c, style: style);
-        }).toList(),
-      ),
-    );
-  }
-
-  KeyEventResult _keyListener(FocusNode node, KeyEvent event) {
-    final pressed = HardwareKeyboard.instance.isLogicalKeyPressed(
-      event.logicalKey,
-    );
-
-    if (event.logicalKey == LogicalKeyboardKey.select) {
-      if (!pressed) {
-        _cursorClick();
-      }
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      _keyMap.keyUp = pressed;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      _keyMap.keyDown = pressed;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      _keyMap.keyLeft = pressed;
-    } else if (event.logicalKey == LogicalKeyboardKey.arrowRight) {
-      _keyMap.keyRight = pressed;
-    }
-
-    if (_keyMap.anyPressed) {
-      _cursorMove();
-      _scrollOffset();
-    }
-
-    return KeyEventResult.handled;
   }
 }

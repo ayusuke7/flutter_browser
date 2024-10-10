@@ -10,6 +10,7 @@ class AppWidget extends StatelessWidget {
     return Shortcuts(
       shortcuts: <LogicalKeySet, Intent>{
         LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent(),
+        LogicalKeySet(LogicalKeyboardKey.enter): const ActivateIntent(),
       },
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -19,6 +20,7 @@ class AppWidget extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.deepPurple,
           ),
+          focusColor: Colors.deepPurple,
           iconButtonTheme: IconButtonThemeData(
             style: ButtonStyle(
               backgroundColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
