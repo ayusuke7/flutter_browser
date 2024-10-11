@@ -18,7 +18,6 @@ class BrowserDevTools extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ConfigModel>();
-
     final consoleWidget = Column(
       children: [
         Expanded(
@@ -41,14 +40,17 @@ class BrowserDevTools extends StatelessWidget {
             }).toList(),
           ),
         ),
-        TextField(
-          autofocus: false,
-          onSubmitted: onSubmit,
-          cursorColor: Colors.white,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
-            hintText: 'console.log("Hello World");',
+        Padding(
+          padding: const EdgeInsets.fromLTRB(15, 0, 10, 10),
+          child: TextField(
+            autofocus: true,
+            onSubmitted: onSubmit,
+            cursorColor: Colors.white,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              suffixIcon: Icon(Icons.play_arrow),
+              hintText: 'console.log("Hello World");',
+            ),
           ),
         ),
       ],

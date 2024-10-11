@@ -90,7 +90,7 @@ class _VirtualMouseState extends State<VirtualMouse> {
           node: widget.node,
           autofocus: widget.autoFocus,
           onFocusChange: (value) {
-            print("BROWSER FOCUS $value");
+            print("FOCUS BROWSER $value");
           },
           onKeyEvent: _keyListener,
           child: Stack(

@@ -30,7 +30,7 @@ class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
       child: FocusScope(
         node: node,
         onFocusChange: (value) {
-          print("HEADER FOCUS $value");
+          print("FOCUS HEADER $value");
         },
         child: Row(
           children: [
@@ -80,6 +80,7 @@ class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
                 autofocus: false,
                 controller: inputController,
                 onFieldSubmitted: onSubmitted,
+                keyboardType: TextInputType.url,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
                   filled: true,

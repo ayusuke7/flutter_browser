@@ -23,8 +23,8 @@ class _AppBrowserState extends State<AppBrowser> {
   late final WebViewController _controller;
 
   final _inputController = TextEditingController();
-  final _browserFocus = FocusScopeNode();
   final _headerFocus = FocusScopeNode();
+  final _mouseFocus = FocusScopeNode();
   final _toolsFocus = FocusScopeNode();
 
   Offset _virtualOffset = Offset.zero;
@@ -63,36 +63,30 @@ class _AppBrowserState extends State<AppBrowser> {
   }
 
   void _cursorMove(Offset offset, Size size) {
-    if (_browserFocus.hasFocus) {
-      _virtualOffset = offset;
-      _virtualSize = size;
-    }
+    _virtualOffset = offset;
+    _virtualSize = size;
   }
 
   void _cursorClick(Offset offset) {
-    if (_browserFocus.hasFocus) {
-      _controller.runJavaScriptReturningResult('''
+    _controller.runJavaScript('''
       var element = document.elementFromPoint(${offset.dx}, ${offset.dy});
       if (element) element.click();
     ''');
-    }
   }
 
   void _scrollOffset(KeyPressed key) async {
-    if (!key.keyUp && !key.keyDown) {
-      return;
-    }
+    if (!key.keyUp && !key.keyDown) return;
 
     final scroll = await _controller.getScrollPosition();
 
     // Check if possible scroll and top offset
-    if (key.keyUp) {
-      if (scroll.dy >= 0 && _virtualOffset.dy <= 0) {
+    if (key.keyUp && _virtualOffset.dy <= 0) {
+      if (scroll.dy >= 0) {
         _controller.scrollTo(
           scroll.dx.toInt(),
           scroll.dy.toInt() - 40,
         );
-      } else if (scroll.dy <= 0 && _virtualOffset.dy <= 0 && mounted) {
+      } else {
         _headerFocus.requestScopeFocus();
       }
 
@@ -105,23 +99,17 @@ class _AppBrowserState extends State<AppBrowser> {
     }
   }
 
-  bool _validateURL(String url) {
-    RegExp urlRegex = RegExp(
-        r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$');
-    return urlRegex.hasMatch(url);
-  }
-
   void _onSubmitted(String value) {
     String url;
 
-    if (_validateURL(value)) {
+    if (Helper.isURL(value)) {
       url = value.startsWith("http") ? value : "https://$value";
     } else {
       url = "https://www.google.com/search?q=$value";
     }
 
     _controller.loadRequest(Uri.parse(url));
-    _browserFocus.requestScopeFocus();
+    _mouseFocus.requestScopeFocus();
   }
 
   void _showDevTools() {
@@ -131,7 +119,11 @@ class _AppBrowserState extends State<AppBrowser> {
         return Dialog(
           child: BrowserDevTools(
             node: _toolsFocus,
-            onSubmit: _controller.runJavaScript,
+            onSubmit: (value) {
+              if (value.isNotEmpty) {
+                _controller.runJavaScript(value);
+              }
+            },
             actions: [
               IconButton(
                 color: Colors.white,
@@ -161,6 +153,12 @@ class _AppBrowserState extends State<AppBrowser> {
   }
 
   @override
+  void dispose() {
+    _inputController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FocusTraversalGroup(
       child: Scaffold(
@@ -183,16 +181,17 @@ class _AppBrowserState extends State<AppBrowser> {
               onPressed: _showDevTools,
             ),
             IconButton(
-              color: const Color.fromRGBO(255, 255, 255, 1),
+              color: Colors.white,
               icon: const Icon(Icons.language),
               onPressed: () {
-                _browserFocus.requestFocus();
+                _mouseFocus.requestFocus();
               },
             ),
           ],
         ),
         body: VirtualMouse(
-          node: _browserFocus,
+          autoFocus: true,
+          node: _mouseFocus,
           onClick: _cursorClick,
           onMoveEnd: _cursorMove,
           onKeyPressed: _scrollOffset,
