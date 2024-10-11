@@ -7,32 +7,31 @@ class AppWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Shortcuts(
-      shortcuts: <LogicalKeySet, Intent>{
-        LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent(),
-        LogicalKeySet(LogicalKeyboardKey.enter): const ActivateIntent(),
-      },
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'App Browser',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.deepPurple,
-          ),
-          focusColor: Colors.deepPurple,
-          iconButtonTheme: IconButtonThemeData(
-            style: ButtonStyle(
-              backgroundColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
-                if (states.contains(WidgetState.focused)) {
-                  return Colors.white.withOpacity(.5);
-                }
-                return Colors.transparent;
-              }),
-            ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'App Browser',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+        ),
+        iconButtonTheme: IconButtonThemeData(
+          style: ButtonStyle(
+            backgroundColor: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
+              if (states.contains(WidgetState.focused)) {
+                return Colors.white.withOpacity(.5);
+              }
+              return Colors.transparent;
+            }),
           ),
         ),
-        home: const AppBrowser(),
+      ),
+      home: Shortcuts(
+        shortcuts: <LogicalKeySet, Intent>{
+          LogicalKeySet(LogicalKeyboardKey.select): const ActivateIntent(),
+          LogicalKeySet(LogicalKeyboardKey.enter): const ActivateIntent(),
+        },
+        child: const AppBrowser(),
       ),
     );
   }

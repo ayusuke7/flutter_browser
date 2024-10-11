@@ -87,6 +87,7 @@ class _VirtualMouseState extends State<VirtualMouse> {
         _maxWidth = constrants.maxWidth;
         _maxHeigth = constrants.maxHeight;
         return FocusScope(
+          node: widget.node,
           autofocus: widget.autoFocus,
           onFocusChange: (value) {
             print("BROWSER FOCUS $value");

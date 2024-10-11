@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_browser/src/components/dev_tools.dart';
 import 'package:flutter_browser/src/components/header_browser.dart';
 import 'package:flutter_browser/src/components/virtual_mouse.dart';
+import 'package:flutter_browser/src/config/web_view_config.dart';
+import 'package:flutter_browser/src/provider/config_model.dart';
 import 'package:flutter_browser/src/utils/helper.dart';
+import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
+const homePage = 'https://google.com';
 const userAgent =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36";
 
@@ -19,73 +22,66 @@ class AppBrowser extends StatefulWidget {
 class _AppBrowserState extends State<AppBrowser> {
   late final WebViewController _controller;
 
-  final _editingController = TextEditingController();
-  final String _homePage = 'https://flutter.dev';
-  final List<String> _console = [];
+  final _inputController = TextEditingController();
+  final _browserFocus = FocusScopeNode();
+  final _headerFocus = FocusScopeNode();
+  final _toolsFocus = FocusScopeNode();
 
   Offset _virtualOffset = Offset.zero;
   Size _virtualSize = Size.zero;
-  bool _showConsole = false;
-
-  WebViewController _setup() {
-    late final PlatformWebViewControllerCreationParams params;
-    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
-      params = WebKitWebViewControllerCreationParams(
-        allowsInlineMediaPlayback: true,
-        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{
-          PlaybackMediaTypes.audio,
-          PlaybackMediaTypes.video,
-        },
-      );
-    } else {
-      params = const PlatformWebViewControllerCreationParams();
-    }
-
-    return WebViewController.fromPlatformCreationParams(
-      params,
-    );
-  }
 
   void _init() {
-    _controller = _setup()
+    _controller = setupWebViewController()
       ..setUserAgent(userAgent)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setOnScrollPositionChange((position) {})
+      ..setOnConsoleMessage(_onJavascriptMessage)
       ..setNavigationDelegate(
         NavigationDelegate(
-          onHttpAuthRequest: (request) {},
-          onNavigationRequest: (request) {
+          onUrlChange: _onUrlChange,
+          onNavigationRequest: (NavigationRequest request) {
             if (request.url.contains("youtube.com")) {
               Helper.openLink(request.url);
               return NavigationDecision.prevent;
             }
             return NavigationDecision.navigate;
           },
-          onUrlChange: (change) {
-            if (change.url != null) {
-              _editingController.text = change.url!;
-            }
-          },
         ),
       )
-      ..setOnConsoleMessage((message) {
-        final level = message.level.name.toUpperCase();
-        setState(() {
-          _console.add("[$level]: ${message.message}\n");
-        });
-      })
-      ..loadRequest(Uri.parse(_homePage));
+      ..loadRequest(Uri.parse(homePage));
+  }
+
+  void _onJavascriptMessage(JavaScriptConsoleMessage m) {
+    final level = m.level.name.toUpperCase();
+    final message = "[$level]: ${m.message}\n";
+    context.read<ConfigModel>().consoleLog(message);
+  }
+
+  void _onUrlChange(UrlChange change) {
+    if (change.url != null) {
+      _inputController.text = change.url!;
+    }
+  }
+
+  void _cursorMove(Offset offset, Size size) {
+    if (_browserFocus.hasFocus) {
+      _virtualOffset = offset;
+      _virtualSize = size;
+    }
   }
 
   void _cursorClick(Offset offset) {
-    _controller.runJavaScriptReturningResult('''
+    if (_browserFocus.hasFocus) {
+      _controller.runJavaScriptReturningResult('''
       var element = document.elementFromPoint(${offset.dx}, ${offset.dy});
       if (element) element.click();
     ''');
+    }
   }
 
   void _scrollOffset(KeyPressed key) async {
-    if (!key.keyUp && !key.keyDown) return;
+    if (!key.keyUp && !key.keyDown) {
+      return;
+    }
 
     final scroll = await _controller.getScrollPosition();
 
@@ -97,7 +93,7 @@ class _AppBrowserState extends State<AppBrowser> {
           scroll.dy.toInt() - 40,
         );
       } else if (scroll.dy <= 0 && _virtualOffset.dy <= 0 && mounted) {
-        FocusScope.of(context).previousFocus();
+        _headerFocus.requestScopeFocus();
       }
 
       // Check if possible scroll and bottom offset
@@ -107,6 +103,55 @@ class _AppBrowserState extends State<AppBrowser> {
         scroll.dy.toInt() + 40,
       );
     }
+  }
+
+  bool _validateURL(String url) {
+    RegExp urlRegex = RegExp(
+        r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$');
+    return urlRegex.hasMatch(url);
+  }
+
+  void _onSubmitted(String value) {
+    String url;
+
+    if (_validateURL(value)) {
+      url = value.startsWith("http") ? value : "https://$value";
+    } else {
+      url = "https://www.google.com/search?q=$value";
+    }
+
+    _controller.loadRequest(Uri.parse(url));
+    _browserFocus.requestScopeFocus();
+  }
+
+  void _showDevTools() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          child: BrowserDevTools(
+            node: _toolsFocus,
+            onSubmit: _controller.runJavaScript,
+            actions: [
+              IconButton(
+                color: Colors.white,
+                icon: const Icon(Icons.close),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+              ),
+              IconButton(
+                color: Colors.white,
+                icon: const Icon(Icons.clear_all),
+                onPressed: () {
+                  context.read<ConfigModel>().consoleClear();
+                },
+              )
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -120,54 +165,38 @@ class _AppBrowserState extends State<AppBrowser> {
     return FocusTraversalGroup(
       child: Scaffold(
         appBar: HeaderBrowser(
-          webViewController: _controller,
-          editingController: _editingController,
+          node: _headerFocus,
+          controller: _controller,
+          inputController: _inputController,
+          onSubmitted: _onSubmitted,
           actions: [
             IconButton(
               color: Colors.white,
               icon: const Icon(Icons.home),
               onPressed: () {
-                _controller.loadRequest(
-                  Uri.parse(_homePage),
-                );
+                _controller.loadRequest(Uri.parse(homePage));
               },
             ),
             IconButton(
               color: Colors.white,
               icon: const Icon(Icons.settings),
+              onPressed: _showDevTools,
+            ),
+            IconButton(
+              color: const Color.fromRGBO(255, 255, 255, 1),
+              icon: const Icon(Icons.language),
               onPressed: () {
-                setState(() {
-                  _showConsole = !_showConsole;
-                });
+                _browserFocus.requestFocus();
               },
             ),
           ],
         ),
-        body: Stack(
-          alignment: AlignmentDirectional.bottomCenter,
-          children: [
-            VirtualMouse(
-              onClick: _cursorClick,
-              onKeyPressed: _scrollOffset,
-              onMoveEnd: (offset, size) {
-                _virtualOffset = offset;
-                _virtualSize = size;
-              },
-              child: WebViewWidget(
-                controller: _controller,
-              ),
-            ),
-            if (_showConsole)
-              BrowserDevTools(
-                console: _console,
-                onSubmit: _controller.runJavaScript,
-                onClear: () {
-                  setState(() {
-                    _console.clear();
-                  });
-                },
-              ),
-          ],
+        body: VirtualMouse(
+          node: _browserFocus,
+          onClick: _cursorClick,
+          onMoveEnd: _cursorMove,
+          onKeyPressed: _scrollOffset,
+          child: WebViewWidget(controller: _controller),
         ),
       ),
     );

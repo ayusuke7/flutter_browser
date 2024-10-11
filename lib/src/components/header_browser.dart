@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
-  final TextEditingController editingController;
-  final WebViewController webViewController;
+  final WebViewController controller;
   final List<Widget> actions;
+  final FocusScopeNode? node;
+  final TextEditingController? inputController;
+
+  final Function(String)? onSubmitted;
 
   const HeaderBrowser({
     super.key,
-    required this.webViewController,
-    required this.editingController,
+    required this.controller,
+    this.inputController,
     this.actions = const [],
+    this.node,
+    this.onSubmitted,
   });
 
   @override
@@ -23,18 +28,19 @@ class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
       ),
       color: Colors.grey.shade800,
       child: FocusScope(
+        node: node,
         onFocusChange: (value) {
           print("HEADER FOCUS $value");
         },
         child: Row(
           children: [
             FutureBuilder<bool>(
-              future: webViewController.canGoBack(),
+              future: controller.canGoBack(),
               builder: (context, snap) {
                 VoidCallback? onPressed;
                 if (snap.data == true) {
                   onPressed = () {
-                    webViewController.goBack();
+                    controller.goBack();
                   };
                 }
                 return IconButton(
@@ -46,12 +52,12 @@ class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
               },
             ),
             FutureBuilder<bool>(
-              future: webViewController.canGoForward(),
+              future: controller.canGoForward(),
               builder: (context, snap) {
                 VoidCallback? onPressed;
                 if (snap.data == true) {
                   onPressed = () {
-                    webViewController.goForward();
+                    controller.goForward();
                   };
                 }
                 return IconButton(
@@ -66,17 +72,15 @@ class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
               color: Colors.white,
               icon: const Icon(Icons.refresh),
               onPressed: () {
-                webViewController.reload();
+                controller.reload();
               },
             ),
             Expanded(
               child: TextFormField(
                 autofocus: false,
-                controller: editingController,
+                controller: inputController,
+                onFieldSubmitted: onSubmitted,
                 textInputAction: TextInputAction.done,
-                onFieldSubmitted: (value) {
-                  webViewController.loadRequest(Uri.parse(value));
-                },
                 decoration: const InputDecoration(
                   filled: true,
                   isDense: true,
@@ -98,5 +102,5 @@ class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(80.0);
+  Size get preferredSize => const Size.fromHeight(70.0);
 }
