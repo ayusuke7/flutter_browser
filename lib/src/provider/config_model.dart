@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 
 class ConfigModel extends ChangeNotifier {
   final String _homePage = 'https://google.com';
-  List<String> _console = [];
+  final List<String> _console = [];
 
   String get homePage => _homePage;
   List<String> get console => _console;
 
-  void consoleLog(String message) {
-    _console = List<String>.of(_console)..add(message);
+  void log(String message) {
+    _console.add(message);
     notifyListeners();
   }
 
-  void consoleClear() {
+  void clear() {
     _console.clear();
     notifyListeners();
   }

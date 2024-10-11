@@ -24,16 +24,10 @@ class BrowserDevTools extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(10),
             children: provider.console.map((text) {
-              var color = Colors.white;
-
-              if (text.toLowerCase().contains("erro")) {
-                color = Colors.red;
-              }
-
               return Text(
                 text,
-                style: TextStyle(
-                  color: color,
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 15.0,
                 ),
               );
@@ -43,7 +37,6 @@ class BrowserDevTools extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.fromLTRB(15, 0, 10, 10),
           child: TextField(
-            autofocus: true,
             onSubmitted: onSubmit,
             cursorColor: Colors.white,
             style: const TextStyle(color: Colors.white),

@@ -12,7 +12,6 @@ class VirtualMouse extends StatefulWidget {
   final Function(KeyPressed)? onKeyPressed;
 
   final bool autoFocus;
-  final bool showCursor;
 
   const VirtualMouse({
     super.key,
@@ -22,7 +21,6 @@ class VirtualMouse extends StatefulWidget {
     this.onMoveEnd,
     this.onKeyPressed,
     this.autoFocus = true,
-    this.showCursor = true,
   });
 
   @override
@@ -42,12 +40,10 @@ class _VirtualMouseState extends State<VirtualMouse> {
   Size get size => Size(_maxWidth, _maxHeigth);
 
   void _setup() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final size = MediaQuery.sizeOf(context);
-      setState(() {
-        _dx = size.width / 2;
-        _dy = size.height / 2;
-      });
+    final size = MediaQuery.sizeOf(context);
+    setState(() {
+      _dx = size.width / 2;
+      _dy = size.height / 2;
     });
   }
 
@@ -74,10 +70,20 @@ class _VirtualMouseState extends State<VirtualMouse> {
     });
   }
 
+  void _resetKeys() {
+    _keyMap.keyUp = false;
+    _keyMap.keyDown = false;
+    _keyMap.keyLeft = false;
+    _keyMap.keyRight = false;
+  }
+
   @override
   void initState() {
     super.initState();
-    _setup();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setup();
+    });
   }
 
   @override
@@ -90,25 +96,24 @@ class _VirtualMouseState extends State<VirtualMouse> {
           node: widget.node,
           autofocus: widget.autoFocus,
           onFocusChange: (value) {
-            print("FOCUS BROWSER $value");
+            if (!value) {
+              _resetKeys();
+            }
           },
           onKeyEvent: _keyListener,
           child: Stack(
             alignment: AlignmentDirectional.center,
             children: [
               widget.child,
-              Visibility(
-                visible: widget.showCursor,
-                child: Positioned(
-                  top: _dy,
-                  left: _dx,
-                  child: Transform.rotate(
-                    angle: -0.45,
-                    child: const Icon(
-                      Icons.navigation,
-                      size: 40.0,
-                      color: Colors.redAccent,
-                    ),
+              Positioned(
+                top: _dy,
+                left: _dx,
+                child: Transform.rotate(
+                  angle: -0.45,
+                  child: const Icon(
+                    Icons.navigation,
+                    size: 30.0,
+                    color: Colors.redAccent,
                   ),
                 ),
               ),
@@ -140,7 +145,6 @@ class _VirtualMouseState extends State<VirtualMouse> {
 
     if (_keyMap.anyPressed) {
       _move();
-
       if (widget.onKeyPressed != null) {
         widget.onKeyPressed!(_keyMap);
       }

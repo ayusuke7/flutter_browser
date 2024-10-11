@@ -51,9 +51,9 @@ class _AppBrowserState extends State<AppBrowser> {
   }
 
   void _onJavascriptMessage(JavaScriptConsoleMessage m) {
-    final level = m.level.name.toUpperCase();
+    final level = m.level.name;
     final message = "[$level]: ${m.message}\n";
-    context.read<ConfigModel>().consoleLog(message);
+    context.read<ConfigModel>().log(message);
   }
 
   void _onUrlChange(UrlChange change) {
@@ -70,6 +70,8 @@ class _AppBrowserState extends State<AppBrowser> {
   void _cursorClick(Offset offset) {
     _controller.runJavaScript('''
       var element = document.elementFromPoint(${offset.dx}, ${offset.dy});
+      console.log(${offset.dx}, ${offset.dy});
+      console.log(element.innerHTML);
       if (element) element.click();
     ''');
   }
@@ -136,7 +138,7 @@ class _AppBrowserState extends State<AppBrowser> {
                 color: Colors.white,
                 icon: const Icon(Icons.clear_all),
                 onPressed: () {
-                  context.read<ConfigModel>().consoleClear();
+                  context.read<ConfigModel>().clear();
                 },
               )
             ],

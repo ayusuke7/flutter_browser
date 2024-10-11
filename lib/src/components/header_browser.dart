@@ -29,9 +29,6 @@ class HeaderBrowser extends StatelessWidget implements PreferredSizeWidget {
       color: Colors.grey.shade800,
       child: FocusScope(
         node: node,
-        onFocusChange: (value) {
-          print("FOCUS HEADER $value");
-        },
         child: Row(
           children: [
             FutureBuilder<bool>(
