@@ -19,8 +19,8 @@ abstract class Helper {
   }
 
   static bool isURL(String url) {
-    RegExp urlRegex = RegExp(
-        r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$');
-    return urlRegex.hasMatch(url);
+    const pattern =
+        r'^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?$';
+    return RegExp(pattern).hasMatch(url);
   }
 }

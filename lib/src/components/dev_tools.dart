@@ -5,14 +5,12 @@ import 'package:provider/provider.dart';
 class BrowserDevTools extends StatelessWidget {
   final Function(String) onSubmit;
 
-  final FocusScopeNode? node;
   final List<Widget> actions;
 
   const BrowserDevTools({
     super.key,
     required this.onSubmit,
     this.actions = const [],
-    this.node,
   });
 
   @override
@@ -61,10 +59,14 @@ class BrowserDevTools extends StatelessWidget {
             width: 50.0,
             decoration: const BoxDecoration(
               border: Border(
-                left: BorderSide(color: Colors.grey),
+                left: BorderSide(
+                  color: Colors.grey,
+                ),
               ),
             ),
-            child: Column(children: actions),
+            child: Column(
+              children: actions,
+            ),
           )
         ],
       );
@@ -79,10 +81,7 @@ class BrowserDevTools extends StatelessWidget {
           top: BorderSide(color: Colors.grey),
         ),
       ),
-      child: FocusScope(
-        node: node,
-        child: child,
-      ),
+      child: child,
     );
   }
 }

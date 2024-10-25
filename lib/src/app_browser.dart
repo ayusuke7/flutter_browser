@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_browser/src/components/dev_tools.dart';
 import 'package:flutter_browser/src/components/header_browser.dart';
@@ -25,7 +26,6 @@ class _AppBrowserState extends State<AppBrowser> {
   final _inputController = TextEditingController();
   final _headerFocus = FocusScopeNode();
   final _mouseFocus = FocusScopeNode();
-  final _toolsFocus = FocusScopeNode();
 
   Offset _virtualOffset = Offset.zero;
   Size _virtualSize = Size.zero;
@@ -67,13 +67,23 @@ class _AppBrowserState extends State<AppBrowser> {
     _virtualSize = size;
   }
 
-  void _cursorClick(Offset offset) {
-    _controller.runJavaScript('''
-      var element = document.elementFromPoint(${offset.dx}, ${offset.dy});
-      console.log(${offset.dx}, ${offset.dy});
-      console.log(element.innerHTML);
-      if (element) element.click();
-    ''');
+  void _cursorClick(Offset offset) async {
+    GestureBinding.instance.handlePointerEvent(PointerDownEvent(
+      position: offset,
+    ));
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    GestureBinding.instance.handlePointerEvent(PointerUpEvent(
+      position: offset,
+    ));
+    // _controller.runJavaScript('''
+    //   var element = document.elementFromPoint(${offset.dx}, ${offset.dy});
+    //   if (element) {
+    //     console.log(element.innerHTML);
+    //     element.click();
+    //   }
+    // ''');
   }
 
   void _scrollOffset(KeyPressed key) async {
@@ -120,7 +130,6 @@ class _AppBrowserState extends State<AppBrowser> {
       builder: (context) {
         return Dialog(
           child: BrowserDevTools(
-            node: _toolsFocus,
             onSubmit: (value) {
               if (value.isNotEmpty) {
                 _controller.runJavaScript(value);
@@ -128,6 +137,7 @@ class _AppBrowserState extends State<AppBrowser> {
             },
             actions: [
               IconButton(
+                autofocus: true,
                 color: Colors.white,
                 icon: const Icon(Icons.close),
                 onPressed: () {
@@ -197,7 +207,13 @@ class _AppBrowserState extends State<AppBrowser> {
           onClick: _cursorClick,
           onMoveEnd: _cursorMove,
           onKeyPressed: _scrollOffset,
-          child: WebViewWidget(controller: _controller),
+          child: Column(
+            children: [
+              WebViewWidget(
+                controller: _controller,
+              ),
+            ],
+          ),
         ),
       ),
     );

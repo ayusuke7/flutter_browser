@@ -48,11 +48,11 @@ class _VirtualMouseState extends State<VirtualMouse> {
   }
 
   void _move() {
-    const velocity = 5.0;
-    Timer.periodic(const Duration(milliseconds: 50), (t) {
+    const velocity = 1.0;
+    Timer.periodic(const Duration(milliseconds: 10), (t) {
       if (_keyMap.keyLeft && _dx > 0) {
         _dx -= velocity;
-      } else if (_keyMap.keyRight && _dx < _maxWidth - 15) {
+      } else if (_keyMap.keyRight && _dx < _maxWidth - 10) {
         _dx += velocity;
       } else if (_keyMap.keyUp && _dy > 0) {
         _dy -= velocity;
